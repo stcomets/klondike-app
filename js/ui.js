@@ -8,6 +8,25 @@ const UI = (() => {
   let state = null;
   let timerHandle = null;
 
+  // Manual double-tap detection. Native 'dblclick' is unreliable across touch
+  // browsers when the two taps come in as synthetic touch events, so we track
+  // tap timing/target ourselves instead of relying on it.
+  let lastTapKey = null;
+  let lastTapTime = 0;
+  const DOUBLE_TAP_MS = 350;
+  function isDoubleTap(key) {
+    const now = Date.now();
+    const isDouble = lastTapKey === key && now - lastTapTime < DOUBLE_TAP_MS;
+    if (isDouble) {
+      lastTapKey = null;
+      lastTapTime = 0;
+    } else {
+      lastTapKey = key;
+      lastTapTime = now;
+    }
+    return isDouble;
+  }
+
   const el = {
     stock: document.getElementById("pile-stock"),
     waste: document.getElementById("pile-waste"),
@@ -239,35 +258,51 @@ const UI = (() => {
     if (ok) afterMove(); else { toast("そこには置けません"); render(); }
   }
 
-  function runAutocomplete() {
-    if (state.mode === "noFoundation") {
-      toast("このモードではオートコンプリートは使えません");
-      return;
+  /**
+   * Double-tap autocomplete: acts only on the specific card that was tapped.
+   * Search order mirrors the board's visual layout — top row first (the
+   * matching-suit foundation, if any), then the tableau row left to right —
+   * and stops at the first legal destination found.
+   */
+  function autoPlaceFromWaste() {
+    if (state.waste.length === 0) return;
+    const card = state.waste[state.waste.length - 1];
+    if (Game.canPlaceOnFoundation(card, state)) {
+      const { ok } = Game.moveWasteToFoundation(state);
+      if (ok) { clearSelection(); afterMove(); return; }
     }
-    clearSelection();
-    let movedAny = false;
-    let progress = true;
-    while (progress) {
-      progress = false;
-      for (let i = 0; i < 7; i++) {
-        const pile = state.tableau[i];
-        if (pile.length === 0) continue;
-        const top = pile[pile.length - 1];
-        if (top.faceUp && Game.canPlaceOnFoundation(top, state)) {
-          const { ok } = Game.moveTableauToFoundation(state, i);
-          if (ok) { progress = true; movedAny = true; }
-        }
-      }
-      if (state.waste.length > 0) {
-        const card = state.waste[state.waste.length - 1];
-        if (Game.canPlaceOnFoundation(card, state)) {
-          const { ok } = Game.moveWasteToFoundation(state);
-          if (ok) { progress = true; movedAny = true; }
-        }
+    for (let k = 0; k < 7; k++) {
+      if (Game.canPlaceOnTableau(card, state.tableau[k])) {
+        const { ok } = Game.moveWasteToTableau(state, k);
+        if (ok) { clearSelection(); afterMove(); return; }
       }
     }
-    if (!movedAny) toast("自動で送れるカードはありません");
-    afterMove();
+    toast("移動できる場所がありません");
+  }
+
+  function autoPlaceFromTableau(pileIndex, cardIndex) {
+    const pile = state.tableau[pileIndex];
+    if (cardIndex === undefined || !pile[cardIndex] || !pile[cardIndex].faceUp) return;
+    const isTopCard = cardIndex === pile.length - 1;
+
+    if (isTopCard) {
+      const card = pile[cardIndex];
+      if (Game.canPlaceOnFoundation(card, state)) {
+        const { ok } = Game.moveTableauToFoundation(state, pileIndex);
+        if (ok) { clearSelection(); afterMove(); return; }
+      }
+    }
+
+    const run = Game.getTableauRun(pile, cardIndex);
+    if (!run) { toast("移動できる場所がありません"); return; }
+    for (let k = 0; k < 7; k++) {
+      if (k === pileIndex) continue;
+      if (Game.canPlaceOnTableau(run[0], state.tableau[k])) {
+        const { ok } = Game.moveTableauToTableau(state, pileIndex, cardIndex, k);
+        if (ok) { clearSelection(); afterMove(); return; }
+      }
+    }
+    toast("移動できる場所がありません");
   }
 
   function onTableauTap(pileIndex, cardIndex) {
@@ -307,28 +342,33 @@ const UI = (() => {
 
   function bindEvents() {
     el.stock.addEventListener("click", onStockTap);
-    el.waste.addEventListener("click", onWasteTap);
+    el.waste.addEventListener("click", () => {
+      if (state.waste.length > 0 && isDoubleTap("waste")) {
+        autoPlaceFromWaste();
+        return;
+      }
+      onWasteTap();
+    });
     for (const pileEl of el.foundations.children) {
       pileEl.addEventListener("click", () => onFoundationTap(pileEl.dataset.suit));
     }
+    // Double-tap on a specific face-up card auto-moves *that* card: try its
+    // matching foundation first (top-row, left-to-right — only one foundation
+    // ever matches a given suit), then the tableau columns left-to-right,
+    // stopping at the first legal destination. Detected manually (see
+    // isDoubleTap) rather than via the native 'dblclick' event, which does not
+    // fire reliably from two quick synthetic/touch taps on all browsers.
     el.tableau.addEventListener("click", (e) => {
       const cardEl = e.target.closest(".card");
       const colEl = e.target.closest(".tableau-pile");
       if (!colEl) return;
       const pileIndex = Number(colEl.dataset.pile);
       const cardIndex = cardEl ? Number(cardEl.dataset.index) : undefined;
+      if (cardEl && isDoubleTap(`tableau:${pileIndex}:${cardIndex}`)) {
+        autoPlaceFromTableau(pileIndex, cardIndex);
+        return;
+      }
       onTableauTap(pileIndex, cardIndex);
-    });
-    // Double-tap/double-click on any card triggers autocomplete: send every
-    // currently eligible card to its foundation, scanning tableau columns
-    // left-to-right first, then the waste, repeating until nothing more moves.
-    el.tableau.addEventListener("dblclick", (e) => {
-      if (!e.target.closest(".card")) return;
-      runAutocomplete();
-    });
-    el.waste.addEventListener("dblclick", (e) => {
-      if (!e.target.closest(".card")) return;
-      runAutocomplete();
     });
 
     document.getElementById("btn-new").addEventListener("click", () => {
