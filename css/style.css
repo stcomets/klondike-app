@@ -1,0 +1,277 @@
+:root {
+  --felt: #0e3d29;
+  --felt-dark: #0a2e1f;
+  --card-bg: #faf8f0;
+  --card-border: #d8d3c2;
+  --ink: #1e1e22;
+  --red: #c42e2e;
+  --accent: #d9b45a;
+  --card-w: clamp(34px, 12.6vw, 58px);
+  --card-h: calc(var(--card-w) * 1.4);
+  --tableau-offset: calc(var(--card-h) * 0.26);
+  --tableau-offset-down: calc(var(--card-h) * 0.16);
+  --radius: 8px;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+body {
+  background: radial-gradient(circle at 50% 0%, var(--felt) 0%, var(--felt-dark) 100%);
+  color: #f2efe6;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.18);
+  flex-wrap: nowrap;
+}
+
+.mode-badge {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(217, 180, 90, 0.18);
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stats {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.icon-btn, .text-btn, .primary-btn, #stats-summary button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f2efe6;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.icon-btn:active, .text-btn:active, .primary-btn:active { background: rgba(255, 255, 255, 0.2); }
+
+.primary-btn {
+  background: var(--accent);
+  color: #221a08;
+  border: none;
+  font-weight: 600;
+  padding: 10px 16px;
+}
+
+#btn-start-mode {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.board {
+  flex: 1;
+  padding: 10px 8px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--card-h) * 0.22);
+}
+
+.row { display: flex; gap: 8px; }
+
+.top-row { align-items: flex-start; }
+
+.spacer { flex: 1; }
+
+.foundations { display: flex; gap: 8px; }
+
+.pile {
+  width: var(--card-w);
+  height: var(--card-h);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pile.disabled {
+  opacity: 0.35;
+}
+
+.pile::before {
+  content: attr(data-empty-label);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--card-w) * 0.42);
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.tableau-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  justify-items: center;
+  flex: 1;
+}
+
+.tableau-pile {
+  position: relative;
+  width: var(--card-w);
+  min-height: var(--card-h);
+  border-radius: var(--radius);
+}
+
+.card {
+  position: absolute;
+  width: var(--card-w);
+  height: var(--card-h);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 3px 4px;
+  font-weight: 700;
+  color: var(--ink);
+  transition: box-shadow 0.12s ease, transform 0.08s ease;
+}
+
+.card.red { color: var(--red); }
+
+.card .rank {
+  font-size: calc(var(--card-w) * 0.24);
+  line-height: 1;
+}
+
+.card .suit-center {
+  align-self: center;
+  font-size: calc(var(--card-w) * 0.4);
+  line-height: 1;
+}
+
+.card.face-down {
+  background: repeating-linear-gradient(135deg, #1a3a63, #1a3a63 4px, #142c4d 4px, #142c4d 8px);
+  border: 2px solid var(--accent);
+}
+
+.card.selected {
+  box-shadow: 0 0 0 3px var(--accent), 0 4px 10px rgba(0, 0, 0, 0.4);
+  transform: translateY(-3px);
+  z-index: 999 !important;
+}
+
+.card.just-moved { animation: pop 0.15s ease; }
+@keyframes pop { from { transform: scale(1.06); } to { transform: scale(1); } }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(20, 20, 24, 0.92);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.ios-hint {
+  position: fixed;
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  background: rgba(20, 20, 24, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ios-hint p { margin: 0; flex: 1; }
+.ios-hint[hidden] { display: none; }
+
+dialog {
+  border: none;
+  border-radius: 14px;
+  padding: 0;
+  background-color: var(--card-bg);
+  color: var(--ink);
+  color-scheme: light;
+  width: min(92vw, 420px);
+  max-height: 86vh;
+}
+
+dialog::backdrop { background: rgba(0, 0, 0, 0.55); }
+
+.menu-form { padding: 18px 18px 14px; overflow-y: auto; max-height: 86vh; }
+.menu-form h2 { margin: 0 0 10px; font-size: 18px; }
+.menu-form h3 { margin: 16px 0 6px; font-size: 14px; opacity: 0.7; }
+.menu-form section:first-of-type h3 { margin-top: 0; }
+
+.radio-row { display: block; padding: 6px 0; font-size: 14px; }
+.hint-text { font-size: 12px; opacity: 0.7; margin: 4px 0 0; }
+
+.button-row { display: flex; gap: 8px; }
+.button-row button, .stats-summary-actions button {
+  background: #eee;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  flex: 1;
+}
+
+.stats-summary { font-size: 13px; line-height: 1.7; }
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+@media (min-width: 700px) {
+  :root { --card-w: 66px; }
+  .board { max-width: 640px; margin: 0 auto; width: 100%; }
+}

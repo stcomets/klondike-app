@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>klondike-app</title>
+
+<!-- 検索エンジンには載せない（URLを知っている人だけがアクセスする方針） -->
+<meta name="robots" content="noindex, nofollow, noarchive" />
+
+<meta name="theme-color" content="#0e3d29" />
+<meta name="description" content="オフライン対応のクロンダイク・ソリティア（PWA）" />
+
+<!-- iOS ホーム画面追加対応 -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Klondike" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="apple-touch-icon" sizes="167x167" href="icons/apple-touch-icon-167.png" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" />
+<link rel="manifest" href="manifest.webmanifest" />
+
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <button id="btn-menu" class="icon-btn" aria-label="メニュー">≡</button>
+    <div class="mode-badge" id="mode-badge">クロンダイク</div>
+    <div class="stats">
+      <span id="timer">00:00</span>
+      <span id="moves">0手</span>
+    </div>
+    <button id="btn-undo" class="icon-btn" aria-label="1手戻す">⟲</button>
+    <button id="btn-new" class="icon-btn" aria-label="新しいゲーム">新規</button>
+  </header>
+
+  <main class="board">
+    <div class="row top-row">
+      <div class="pile stock" id="pile-stock" data-empty-label="↻"></div>
+      <div class="pile waste" id="pile-waste"></div>
+      <div class="spacer"></div>
+      <div class="foundations" id="foundations">
+        <div class="pile foundation" data-suit="spades" data-empty-label="♠"></div>
+        <div class="pile foundation" data-suit="hearts" data-empty-label="♥"></div>
+        <div class="pile foundation" data-suit="diamonds" data-empty-label="♦"></div>
+        <div class="pile foundation" data-suit="clubs" data-empty-label="♣"></div>
+      </div>
+    </div>
+    <div class="row tableau-row" id="tableau"></div>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <div id="ios-hint" class="ios-hint" hidden>
+    <p>データを端末に残すため、共有ボタン <strong>⬆︎</strong> から「ホーム画面に追加」してください。</p>
+    <button id="ios-hint-close" class="text-btn">閉じる</button>
+  </div>
+</div>
+
+<dialog id="menu-dialog">
+  <form method="dialog" class="menu-form">
+    <h2>メニュー</h2>
+
+    <section>
+      <h3>ルール</h3>
+      <label class="radio-row">
+        <input type="radio" name="mode" value="classic" checked />
+        クロンダイク（通常・1枚めくり）
+      </label>
+      <label class="radio-row">
+        <input type="radio" name="mode" value="noFoundation" />
+        特殊ルール：組札不使用チャレンジ
+      </label>
+      <p class="hint-text">組札不使用チャレンジ：組札に一度もカードを置かずに、山札・場札の全カードを表向きにできれば勝利です。</p>
+      <button type="button" id="btn-start-mode" class="primary-btn">このルールで新しいゲームを始める</button>
+    </section>
+
+    <section>
+      <h3>成績</h3>
+      <div id="stats-summary" class="stats-summary"></div>
+    </section>
+
+    <section>
+      <h3>バックアップ（このアプリのデータは外部送信されません）</h3>
+      <div class="button-row">
+        <button type="button" id="btn-export">履歴をエクスポート</button>
+        <button type="button" id="btn-import">履歴をインポート</button>
+      </div>
+      <input type="file" id="import-file" accept="application/json" hidden />
+    </section>
+
+    <menu class="dialog-actions">
+      <button value="close" class="text-btn">閉じる</button>
+    </menu>
+  </form>
+</dialog>
+
+<dialog id="win-dialog">
+  <form method="dialog" class="menu-form">
+    <h2 id="win-title">クリア！</h2>
+    <p id="win-detail"></p>
+    <menu class="dialog-actions">
+      <button type="button" id="btn-win-newgame" class="primary-btn">もう一度</button>
+      <button value="close" class="text-btn">閉じる</button>
+    </menu>
+  </form>
+</dialog>
+
+<script src="js/cards.js" defer></script>
+<script src="js/game.js" defer></script>
+<script src="js/storage.js" defer></script>
+<script src="js/ui.js" defer></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>
