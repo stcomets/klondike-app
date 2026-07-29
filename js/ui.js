@@ -21,6 +21,7 @@ const UI = (() => {
     winDialog: document.getElementById("win-dialog"),
     winTitle: document.getElementById("win-title"),
     winDetail: document.getElementById("win-detail"),
+    deadlockDialog: document.getElementById("deadlock-dialog"),
     statsSummary: document.getElementById("stats-summary"),
     importFile: document.getElementById("import-file"),
     iosHint: document.getElementById("ios-hint"),
@@ -147,9 +148,10 @@ const UI = (() => {
     state.selection = null;
   }
 
-  function finishGame(won) {
+  function finishGame(won, { deadlock = false } = {}) {
     stopTimer();
     state.won = won;
+    state.finished = true;
     state.endTime = Date.now();
     Storage.recordResult({
       mode: state.mode,
@@ -163,20 +165,31 @@ const UI = (() => {
       el.winDetail.textContent = `${fmtTime(state.endTime - state.startTime)} / ${state.moves}手`;
       el.iosHint.hidden = true;
       el.winDialog.showModal();
+    } else if (deadlock) {
+      el.iosHint.hidden = true;
+      el.deadlockDialog.showModal();
+    }
+  }
+
+  /** Call after every mutating action (draw, move, autocomplete step). */
+  function checkGameOverConditions() {
+    if (state.finished) return;
+    if (Game.checkWin(state)) {
+      finishGame(true);
+    } else if (!Game.hasAnyMove(state)) {
+      finishGame(false, { deadlock: true });
     }
   }
 
   function afterMove() {
     render();
-    if (Game.checkWin(state)) {
-      finishGame(true);
-    }
+    checkGameOverConditions();
   }
 
   function onStockTap() {
     Game.drawFromStock(state);
     clearSelection();
-    render();
+    afterMove();
   }
 
   function onWasteTap() {
@@ -224,6 +237,37 @@ const UI = (() => {
     }
     clearSelection();
     if (ok) afterMove(); else { toast("そこには置けません"); render(); }
+  }
+
+  function runAutocomplete() {
+    if (state.mode === "noFoundation") {
+      toast("このモードではオートコンプリートは使えません");
+      return;
+    }
+    clearSelection();
+    let movedAny = false;
+    let progress = true;
+    while (progress) {
+      progress = false;
+      for (let i = 0; i < 7; i++) {
+        const pile = state.tableau[i];
+        if (pile.length === 0) continue;
+        const top = pile[pile.length - 1];
+        if (top.faceUp && Game.canPlaceOnFoundation(top, state)) {
+          const { ok } = Game.moveTableauToFoundation(state, i);
+          if (ok) { progress = true; movedAny = true; }
+        }
+      }
+      if (state.waste.length > 0) {
+        const card = state.waste[state.waste.length - 1];
+        if (Game.canPlaceOnFoundation(card, state)) {
+          const { ok } = Game.moveWasteToFoundation(state);
+          if (ok) { progress = true; movedAny = true; }
+        }
+      }
+    }
+    if (!movedAny) toast("自動で送れるカードはありません");
+    afterMove();
   }
 
   function onTableauTap(pileIndex, cardIndex) {
@@ -274,6 +318,17 @@ const UI = (() => {
       const pileIndex = Number(colEl.dataset.pile);
       const cardIndex = cardEl ? Number(cardEl.dataset.index) : undefined;
       onTableauTap(pileIndex, cardIndex);
+    });
+    // Double-tap/double-click on any card triggers autocomplete: send every
+    // currently eligible card to its foundation, scanning tableau columns
+    // left-to-right first, then the waste, repeating until nothing more moves.
+    el.tableau.addEventListener("dblclick", (e) => {
+      if (!e.target.closest(".card")) return;
+      runAutocomplete();
+    });
+    el.waste.addEventListener("dblclick", (e) => {
+      if (!e.target.closest(".card")) return;
+      runAutocomplete();
     });
 
     document.getElementById("btn-new").addEventListener("click", () => {
@@ -328,6 +383,11 @@ const UI = (() => {
       el.winDialog.close();
       startNewGame(state.mode);
     });
+    document.getElementById("btn-deadlock-newgame").addEventListener("click", () => {
+      el.deadlockDialog.close();
+      startNewGame(state.mode);
+    });
+    el.deadlockDialog.addEventListener("close", maybeShowIosHint);
     document.getElementById("ios-hint-close").addEventListener("click", () => {
       el.iosHint.hidden = true;
       localStorage.setItem("klondike.iosHintDismissed", "1");
@@ -352,7 +412,7 @@ const UI = (() => {
   }
 
   function startNewGame(mode) {
-    if (state && !state.won) {
+    if (state && !state.finished) {
       Storage.recordResult({ mode: state.mode, won: false, moves: state.moves, durationMs: Date.now() - state.startTime, redeals: state.redeals });
     }
     localStorage.setItem("klondike.lastMode", mode);

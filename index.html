@@ -106,6 +106,17 @@
   </form>
 </dialog>
 
+<dialog id="deadlock-dialog">
+  <form method="dialog" class="menu-form">
+    <h2>手詰まりです</h2>
+    <p>これ以上、有効な手がありません。山札を引き続けても新しい手は現れません。</p>
+    <menu class="dialog-actions">
+      <button type="button" id="btn-deadlock-newgame" class="primary-btn">新しいゲーム</button>
+      <button value="close" class="text-btn">閉じる</button>
+    </menu>
+  </form>
+</dialog>
+
 <script src="js/cards.js" defer></script>
 <script src="js/game.js" defer></script>
 <script src="js/storage.js" defer></script>

@@ -36,6 +36,7 @@ const Game = (() => {
       startTime: Date.now(),
       endTime: null,
       won: false,
+      finished: false, // true once the game has ended (win or deadlock), to avoid double-recording history
       selection: null, // { zone: 'tableau'|'waste', pile: number, index: number }
       undoStack: [],
     };
@@ -194,14 +195,19 @@ const Game = (() => {
     return stockEmpty && allFaceUp;
   }
 
-  /** Any legal move at all remaining? Rough solvability heuristic, not exhaustive. */
+  /**
+   * Is there any legal move left, including moves that only become reachable by
+   * continuing to draw from the stock?
+   *
+   * Key insight: with unlimited redeals and no other moves made, every card
+   * currently in stock+waste will eventually surface at the top of the waste
+   * pile during a full draw cycle (draw-1 just rotates through them in a fixed
+   * order). So checking every stock+waste card against the *current* tableau
+   * state is equivalent to simulating "keep drawing forever and see if
+   * anything becomes playable" — this is an exact check, not a guess, for the
+   * question "can drawing alone ever produce a move from here".
+   */
   function hasAnyMove(state) {
-    if (state.stock.length > 0) return true;
-    if (state.waste.length > 0) {
-      const card = state.waste[state.waste.length - 1];
-      if (canPlaceOnFoundation(card, state)) return true;
-      for (const pile of state.tableau) if (canPlaceOnTableau(card, pile)) return true;
-    }
     for (let i = 0; i < 7; i++) {
       const pile = state.tableau[i];
       if (pile.length === 0) continue;
@@ -217,7 +223,11 @@ const Game = (() => {
         }
       }
     }
-    if (state.waste.length > 0 || state.stock.length > 0) return true; // recycling counts as a move
+    const drawable = state.stock.concat(state.waste);
+    for (const card of drawable) {
+      if (canPlaceOnFoundation(card, state)) return true;
+      for (const pile of state.tableau) if (canPlaceOnTableau(card, pile)) return true;
+    }
     return false;
   }
 
