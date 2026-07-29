@@ -63,14 +63,14 @@ python3 -m http.server 8080
 # ブラウザで http://localhost:8080 を開く
 ```
 
-## デプロイ方針（今後の作業）
+## デプロイ方針
 
-無料GitHubアカウントではPrivateリポジトリでのGitHub Pages配信ができないため、このリポジトリ（`stcomets/klondike-app`）はPrivateのまま、配信はCloudflare Pages（無料枠、Privateリポジトリ連携可）を使う想定。
+対戦履歴・ハイスコアは端末ローカルのみに保存され、リポジトリにはゲームの見た目・ロジック（静的ファイル）しか含まれない。万一公開リポジトリの内容が第三者に見られても実質的な影響はないと判断し、**ホスティングはGitHub Pages（無料アカウント、公開リポジトリ）**を使う。Cloudflare等の他サービスは不要。
 
-1. Cloudflareアカウント作成（無料）
-2. Cloudflare Pages で「Gitに接続」→ `stcomets/klondike-app` を選択
-3. ビルドコマンド：なし（静的ファイルをそのまま配信）／ビルド出力ディレクトリ：`/`
-4. プロジェクト名は推測されにくいランダムな文字列にする（例：`kd7f2m9x`）→ 発行URLが `https://kd7f2m9x.pages.dev` のような形になる
+1. `stcomets/klondike-app` リポジトリをPublicに変更（Settings → General → Danger Zone → Change visibility）
+2. Settings → Pages → Build and deployment → Sourceを「Deploy from a branch」、Branchを`main` / `/(root)`に設定して保存
+3. 数分後に `https://stcomets.github.io/klondike-app/` で公開される
+4. 検索エンジンには引き続き`robots.txt`と`noindex`メタタグでクロール拒否（リポジトリ自体はGitHub上では見つかりうるが、ねらいで見つけられにくくする目的）
 5. デプロイ後、実機（iPhone Safari）でホーム画面追加・機内モードでのオフライン動作を確認
 
 ## 未実装・今後の検討事項
